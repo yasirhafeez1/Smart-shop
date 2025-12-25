@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMART SHOP</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- HTML2Canvas -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #2563eb; --bg: #f3f4f6; --text: #1f2937;
+            --danger: #ef4444; --success: #10b981; --warning: #f59e0b; --info: #06b6d4;
+        }
+        * { box-sizing: border-box; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; background: var(--bg); color: var(--text); padding-bottom: 80px; user-select: none; }
+
+        /* --- NEW INITIAL LOADER (SPLASH SCREEN) --- */
+        #initial-loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .spinner {
+            border: 5px solid #f3f3f3; /* Light grey */
+            border-top: 5px solid var(--primary); /* Blue */
+            border-radius: 50%;
+            width: 50px; height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Auth Screen (Hidden by default to prevent flicker) */
+        #auth-screen { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: white; z-index: 1000; 
+            display: none; /* CHANGED: Hidden initially */
+            flex-direction: column; justify-content: center; padding: 20px; 
+        }
+
+        .logo { font-size: 50px; text-align: center; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; color: white; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        .btn-primary { background: var(--primary); }
+        .btn-success { background: var(--success); }
+        .btn-danger { background: var(--danger); }
+        .btn-warning { background: var(--warning); }
+        .btn-info { background: var(--info); }
+        .btn-sm { padding: 5px 10px; font-size: 12px; width: auto; margin: 0 2px; }
+        .link { text-align: center; margin-top: 15px; color: var(--primary); cursor: pointer; text-decoration: underline; }
+
+        /* Main App Header */
+        header { background: var(--primary); color: white; padding: 15px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .menu-btn { font-size: 24px; cursor: pointer; }
+        .dropdown { position: absolute; top: 50px; right: 10px; background: white; color: black; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); width: 200px; display: none; }
+        .dropdown div { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; }
+
+        /* Sections */
+        .section { padding: 15px; display: none; }
+        .active-section { display: block; }
+
+        /* Cards */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .card h3 { margin: 0 0 10px 0; font-size: 14px; color: #6b7280; }
+        .card p { margin: 0; font-size: 20px; font-weight: bold; color: var(--text); }
+
+        /* Action Buttons Grid */
+        .actions-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .action-card { background: white; padding: 15px; border-radius: 12px; text-align: center; cursor: pointer; border: 1px solid #e5e7eb; }
+        .action-icon { font-size: 24px; display: block; margin-bottom: 5px; }
+        .action-text { font-size: 12px; font-weight: bold; }
+
+        /* Tables (Scrollable) */
+        .table-wrap { overflow-x: auto; background: white; border-radius: 12px; margin-top: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; min-width: 650px; font-size: 14px; }
+        th { background: #f9fafb; padding: 12px; text-align: left; border-bottom: 2px solid #e5e7eb; white-space: nowrap; }
+        td { padding: 12px; border-bottom: 1px solid #f3f4f6; text-align: center; white-space: nowrap; vertical-align: middle; }
+        
+        /* Bill Specific */
+        #bill-paper { background: white; padding: 20px; width: 300px; margin: 0 auto; border: 1px dashed #ccc; font-family: monospace; }
+        .bill-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; }
+        .bill-header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+
+        /* Navbar */
+        nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #e5e7eb; box-shadow: 0 -2px 5px rgba(0,0,0,0.05); z-index: 90; }
+        nav button { background: none; border: none; color: #9ca3af; font-size: 10px; display: flex; flex-direction: column; align-items: center; }
+        nav button.active { color: var(--primary); font-weight: bold; }
+        nav button span { font-size: 20px; margin-bottom: 2px; }
+
+        /* Modals */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        .modal-content { background: white; width: 90%; max-width: 350px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto; text-align: center; position: relative; }
+        
+        /* Internal Activity Loader */
+        .loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; z-index:3000; font-weight:bold; color:var(--primary); }
+
+        /* Date Button List */
+        .date-list-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; text-align: left; display: flex; justify-content: space-between; }
+        .date-list-item:hover { background-color: #f9fafb; }
+
+        /* Business Details Styles */
+        .stat-box { padding: 15px; border-radius: 8px; color: white; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .filter-grid { display: none; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; background: #f9fafb; padding: 10px; border-radius: 8px; }
+        .filter-btn { border: 1px solid #ccc; background: white; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+        .filter-btn:hover { background: #e5e7eb; }
+    </style>
+</head>
+<body>
+
+    <!-- INITIAL SPLASH SCREEN (New) -->
+    <div id="initial-loader">
+        <div class="spinner"></div>
+        <h3 style="color:var(--text);">Please Wait...</h3>
+    </div>
+
+    <!-- Internal Activity Spinner -->
+    <div id="loading" class="loading">
+        <div>
+            <p>Processing...</p>
+        </div>
+    </div>
+
+    <!-- Auth Section (Default Hidden) -->
+    <div id="auth-screen">
+        <div class="logo">🏪</div>
+        <h2 style="text-align: center;" id="auth-title">Login to Dookan</h2>
+        
+        <div id="login-form">
+            <div class="input-group">
+                <label>Phone Number</label>
+                <input type="tel" id="login-phone" placeholder="03001234567">
+            </div>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="login-pass" placeholder="Password">
+            </div>
+            <button class="btn btn-primary" onclick="handleLogin()">Login</button>
+            <p class="link" onclick="toggleAuth('signup')">Don't have an account? Sign Up</p>
+        </div>
+
+        <div id="signup-form" style="display:none;">
+            <div class="input-group">
+                <label>Shop Name</label>
+                <input type="text" id="reg-shop" placeholder="My Shop">
+            </div>
+            <div class="input-group">
+                <label>Phone Number</label>
+                <input type="tel" id="reg-phone" placeholder="03001234567">
+            </div>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="reg-pass" placeholder="Password">
+            </div>
+            <button class="btn btn-success" onclick="handleSignup()">Sign Up</button>
+            <p class="link" onclick="toggleAuth('login')">Back to Login</p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-app" style="display:none;">
+        <header>
+            <h3 style="margin:0;" id="header-title">My WebApp</h3>
+            <span class="menu-btn" onclick="toggleMenu()">⋮</span>
+            <div id="menu" class="dropdown">
+                <div onclick="showBusinessDetails()">📊 Business Details</div>
+                <div onclick="openSettings()">⚙️ Settings</div>
+                <div onclick="handleLogout()" style="color:red;">🚪 Logout</div>
+            </div>
+        </header>
+
+        <!-- 1. HOME -->
+        <div id="home" class="section active-section">
+            <div class="stats-grid">
+                <div class="card"><h3>Sales</h3><p id="rpt-sale">0</p></div>
+                <div class="card"><h3>Purchase</h3><p id="rpt-purchase">0</p></div>
+                <div class="card"><h3>Stock Value</h3><p id="rpt-stock" style="color:var(--success);">0</p></div>
+                <div class="card"><h3>Returns</h3><p id="rpt-return" style="color:var(--danger);">0</p></div>
+            </div>
+
+            <button class="btn btn-primary" onclick="nav('products', document.getElementById('nav-stock'))">📦 Manage Stock</button>
+
+            <div class="actions-grid">
+                <div class="action-card" onclick="openContact()">
+                    <span class="action-icon">📞</span>
+                    <span class="action-text">Contact Us</span>
+                </div>
+                <div class="action-card" onclick="openDonate()">
+                    <span class="action-icon">💖</span>
+                    <span class="action-text">Donate Us</span>
+                </div>
+                <div class="action-card" onclick="openYoutube()">
+                    <span class="action-icon">▶️</span>
+                    <span class="action-text">How to Use</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. PRODUCTS (STOCK) -->
+        <div id="products" class="section">
+            <h3>📦 Manage Stock</h3>
+            <div class="input-group">
+                <input type="text" id="prod-code" placeholder="Code" style="margin-bottom:5px;">
+                <input type="text" id="prod-name" placeholder="Product Name" style="margin-bottom:5px;">
+                <div style="display:flex; gap:5px;">
+                    <input type="number" id="prod-price" placeholder="Buy Price">
+                    <input type="number" id="prod-qty" placeholder="Qty">
+                </div>
+                <button class="btn btn-success" onclick="addProduct()">Add Stock</button>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Code</th><th>Name</th><th>Cost</th><th>Stock</th><th>Sold</th><th>Action</th></tr></thead>
+                    <tbody id="stock-table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3. DAYBOOK -->
+        <div id="daybook" class="section">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>📅 Daybook (Today)</h3>
+                <button class="btn btn-info btn-sm" onclick="openMonthlyRecords()">📅 Monthly Record</button>
+            </div>
+            
+            <div style="background:#e0f2fe; padding:10px; border-radius:8px; margin-bottom:10px;">
+                <div style="display:flex; justify-content:space-between;">
+                    <span>Today Sale: <b id="today-sale">0</b></span>
+                    <span>Profit: <b id="today-profit" style="color:green;">0</b></span>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <input type="text" id="day-code" placeholder="Scan/Enter Code" onchange="fetchProdName()">
+                <input type="text" id="day-name" placeholder="Item Name" disabled style="background:#eee; margin:5px 0;">
+                <div style="display:flex; gap:5px;">
+                    <input type="number" id="day-price" placeholder="Sale Price">
+                    <input type="number" id="day-qty" placeholder="Qty">
+                </div>
+                <button class="btn btn-primary" onclick="makeSale()">Add Sale</button>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Profit</th><th>Return</th></tr></thead>
+                    <tbody id="daybook-table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. KHATA -->
+        <div id="khata" class="section">
+            <h3>📒 Khata Book</h3>
+            <input type="text" id="khata-search" placeholder="Search..." onkeyup="renderKhata()" style="margin-bottom:10px;">
+            <div class="input-group">
+                <input type="text" id="k-name" placeholder="Name" style="margin-bottom:5px;">
+                <div style="display:flex; gap:5px;">
+                    <input type="number" id="k-given" placeholder="Odhaar Dia">
+                    <input type="number" id="k-taken" placeholder="Wasool Kia">
+                </div>
+                <button class="btn btn-warning" onclick="addKhata()">Update Khata</button>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Name</th><th>Total</th><th>Rec</th><th>Bal</th></tr></thead>
+                    <tbody id="khata-table"></tbody>
+                </table>
+            </div>
+            <div style="background:#fee2e2; padding:15px; margin-top:10px; border-radius:8px; text-align:center;">
+                <h3>Total Market Odhaar: <span id="total-udhaar">0</span></h3>
+            </div>
+        </div>
+
+        <!-- 5. BILL -->
+        <div id="bill" class="section">
+            <h3>🧾 Bill Generator</h3>
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <button class="btn btn-danger" style="margin:0;" onclick="clearBill()">Clear</button>
+                <button class="btn btn-primary" style="margin:0;" onclick="openBillHistory()">Last 30 Bills</button>
+            </div>
+            <input type="text" id="b-cust" placeholder="Customer Name">
+            
+            <div class="input-group" style="margin-top:10px; border:1px solid #eee; padding:5px;">
+                <input type="text" id="b-item" placeholder="Item Name" style="margin-bottom:5px;">
+                <div style="display:flex; gap:5px;">
+                    <input type="number" id="b-qty" placeholder="Qty">
+                    <input type="number" id="b-price" placeholder="Price">
+                </div>
+                <button class="btn btn-success" onclick="addToBill()">+ Add Item</button>
+            </div>
+
+            <div id="bill-container" style="margin-top:20px; display:flex; justify-content:center; background:#333; padding:10px; border-radius:8px;">
+                <div id="bill-paper">
+                    <div class="bill-header">
+                        <h3 id="print-shop">Shop Name</h3>
+                        <p>Date: <span id="print-date"></span></p>
+                        <p>Customer: <span id="print-cust">Guest</span></p>
+                    </div>
+                    <div style="display:flex; border-bottom:1px solid black; font-weight:bold; font-size:12px;">
+                        <span style="flex:2;">Name</span>
+                        <span style="flex:1; text-align:center;">Qty</span>
+                        <span style="flex:1; text-align:center;">Price</span>
+                        <span style="flex:1; text-align:right;">Total</span>
+                    </div>
+                    <div id="bill-rows"></div>
+                    <div style="border-top:1px dashed black; margin-top:10px; padding-top:5px; text-align:right;">
+                        <h3>Total: <span id="print-total">0</span></h3>
+                    </div>
+                    <p style="text-align:center; font-size:10px; margin-top:10px;">Software provided by YASIR DIGITAL WORLD</p>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="saveBill()">Save & Share</button>
+        </div>
+
+        <!-- Navigation -->
+        <nav>
+            <button onclick="nav('home', this)" class="active"><span>🏠</span>Home</button>
+            <button onclick="nav('daybook', this)"><span>📅</span>Daybook</button>
+            <button id="nav-stock" onclick="nav('products', this)"><span>📦</span>Stock</button>
+            <button onclick="nav('khata', this)"><span>📒</span>Khata</button>
+            <button onclick="nav('bill', this)"><span>🧾</span>Bill</button>
+        </nav>
+    </div>
+
+    <!-- MODALS -->
+    
+    <!-- Edit Stock Modal (NEW) -->
+    <div id="modal-edit" class="modal">
+        <div class="modal-content">
+            <h3>Edit Stock</h3>
+            <input type="text" id="edit-name" disabled style="background:#eee; margin-bottom:5px;">
+            <label style="text-align:left; font-size:12px;">Update Buy Price:</label>
+            <input type="number" id="edit-price" placeholder="Buy Price">
+            <label style="text-align:left; font-size:12px; margin-top:5px;">Add New Stock (Qty):</label>
+            <input type="number" id="edit-add-qty" placeholder="0">
+            <div style="display:flex; gap:5px; margin-top:10px;">
+                <button class="btn btn-danger" onclick="closeModal('modal-edit')">Cancel</button>
+                <button class="btn btn-success" onclick="saveStockEdit()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Business Details Modal (UPDATED) -->
+    <div id="modal-details" class="modal">
+        <div class="modal-content" style="max-width: 350px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 style="margin:0;">Business Details</h3>
+                <button class="btn btn-sm btn-info" onclick="toggleDetailFilters()">📅 Annual Details</button>
+            </div>
+
+            <div id="detail-filters" class="filter-grid">
+                <button class="filter-btn" onclick="calcStats(30)">Last 30 Days</button>
+                <button class="filter-btn" onclick="calcStats(90)">Last 90 Days</button>
+                <button class="filter-btn" onclick="calcStats(180)">Last 6 Months</button>
+                <button class="filter-btn" onclick="calcStats(365)">Last 1 Year</button>
+                <button class="filter-btn" onclick="calcStats('all')" style="grid-column: span 2; background:#333; color:white;">Show All Time</button>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <div class="stat-box" style="background:var(--primary); flex:1;">
+                    <small>Total Sales</small>
+                    <h2 style="margin:5px 0;" id="d-sale">0</h2>
+                </div>
+                <div class="stat-box" style="background:var(--success); flex:1;">
+                    <small>Total Profit</small>
+                    <h2 style="margin:5px 0;" id="d-profit">0</h2>
+                </div>
+            </div>
+
+            <p style="font-size:12px; color:gray; margin-top:5px;" id="period-label">Period: All Time</p>
+            
+            <button class="btn btn-danger" onclick="closeModal('modal-details')" style="margin-top:15px;">Close</button>
+        </div>
+    </div>
+
+    <!-- Monthly Record Modal -->
+    <div id="modal-monthly" class="modal">
+        <div class="modal-content" style="max-width: 95%;">
+            <div id="monthly-list" style="text-align: left;"></div>
+            <button class="btn btn-danger" onclick="closeModal('modal-monthly')" style="margin-top:10px;">Close</button>
+        </div>
+    </div>
+
+    <!-- Return Modal -->
+    <div id="modal-return" class="modal">
+        <div class="modal-content">
+            <h3>Return Item</h3>
+            <p id="return-info"></p>
+            <input type="number" id="return-qty" placeholder="Enter Qty to Return">
+            <div style="display:flex; gap:5px;">
+                <button class="btn btn-danger" onclick="closeModal('modal-return')">Cancel</button>
+                <button class="btn btn-success" onclick="confirmReturn()">Confirm Return</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bill Image Modal -->
+    <div id="modal-bill-view" class="modal">
+        <div class="modal-content" style="text-align:center;">
+            <h3>Bill Saved!</h3>
+            <p>Long press image to Share/Download</p>
+            <img id="generated-bill" style="width:100%; border:1px solid #ccc;">
+            <button class="btn btn-primary" onclick="closeModal('modal-bill-view')">Close</button>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="modal-history" class="modal">
+        <div class="modal-content">
+            <h3>Last 30 Bills</h3>
+            <div id="history-list"></div>
+            <button class="btn btn-danger" onclick="closeModal('modal-history')">Close</button>
+        </div>
+    </div>
+    
+    <!-- Donate Modal -->
+    <div id="modal-donate" class="modal">
+        <div class="modal-content" style="text-align:center;">
+            <h3>We Need Your Help ❤️ smart shop is a free mobile App.If you have an option that help smart shop  to be alive for a long time  donating us is adirect method  You can do it by the payment methods below. Thank you for yourunderstanding and support!</h3>
+            <p>Easypaisa/Jazzcash: 03495895610</p>
+            <p>IBAN: PK36MEZN00012345</p>
+            <button class="btn btn-primary" onclick="closeModal('modal-donate')">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // --- FIREBASE CONFIGURATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDi1ny9WpDMyTOY-g6-87B9ApMzjzo7vx4",
+            authDomain: "yasir-hafeez.firebaseapp.com",
+            databaseURL: "https://yasir-hafeez-default-rtdb.firebaseio.com",
+            projectId: "yasir-hafeez",
+            storageBucket: "yasir-hafeez.firebasestorage.app",
+            messagingSenderId: "757913317141",
+            appId: "1:757913317141:web:cc8b323bcee9c86fcec31c",
+            measurementId: "G-PZ90Q2JDK1"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let currentUser = null;
+        let products = {};
+        let sales = {};
+        let khata = {};
+        let bills = {};
+
+        // --- AUTHENTICATION STATE CHANGE (KEY LOGIC UPDATE) ---
+        auth.onAuthStateChanged(user => {
+            const loader = document.getElementById('initial-loader');
+            
+            if (user) {
+                // User is Logged In: Show App
+                currentUser = user;
+                document.getElementById('auth-screen').style.display = 'none';
+                document.getElementById('main-app').style.display = 'block';
+                loadData();
+            } else {
+                // User is Not Logged In: Show Auth Screen
+                currentUser = null;
+                document.getElementById('auth-screen').style.display = 'flex'; // Use flex to center content
+                document.getElementById('main-app').style.display = 'none';
+                showLoading(false); // Hide internal processing loader if visible
+            }
+
+            // HIDE THE SPLASH SCREEN AFTER DECISION IS MADE
+            if (loader) {
+                // Small buffer to ensure rendering is smooth
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                }, 500);
+            }
+        });
+
+        function toggleAuth(mode) {
+            if(mode === 'signup') {
+                document.getElementById('login-form').style.display = 'none';
+                document.getElementById('signup-form').style.display = 'block';
+                document.getElementById('auth-title').innerText = 'Create Account';
+            } else {
+                document.getElementById('signup-form').style.display = 'none';
+                document.getElementById('login-form').style.display = 'block';
+                document.getElementById('auth-title').innerText = 'Login to Dookan';
+            }
+        }
+
+        function handleLogin() {
+            const phone = document.getElementById('login-phone').value;
+            const pass = document.getElementById('login-pass').value;
+            if(!phone || !pass) return alert("Please fill all fields");
+            
+            showLoading(true);
+            const email = phone + "@dookan.com"; 
+            auth.signInWithEmailAndPassword(email, pass).catch(error => {
+                showLoading(false);
+                alert("Login Failed: " + error.message);
+            });
+        }
+
+        function handleSignup() {
+            const shop = document.getElementById('reg-shop').value;
+            const phone = document.getElementById('reg-phone').value;
+            const pass = document.getElementById('reg-pass').value;
+            if(!shop || !phone || !pass) return alert("Please fill all fields");
+
+            showLoading(true);
+            const email = phone + "@dookan.com";
+            auth.createUserWithEmailAndPassword(email, pass).then(cred => {
+                return db.ref('users/' + cred.user.uid + '/profile').set({
+                    shopName: shop,
+                    phone: phone
+                });
+            }).then(() => {
+                showLoading(false);
+                alert("Account Created!");
+            }).catch(error => {
+                showLoading(false);
+                alert("Signup Failed: " + error.message);
+            });
+        }
+
+        function handleLogout() {
+            if(confirm("Are you sure you want to logout?")) {
+                auth.signOut();
+            }
+        }
+
+        // --- DATA LOADING ---
+        function loadData() {
+            showLoading(true);
+            const uid = currentUser.uid;
+            
+            db.ref('users/' + uid + '/profile').on('value', snap => {
+                if(snap.val()) {
+                    document.getElementById('header-title').innerText = snap.val().shopName;
+                    document.getElementById('print-shop').innerText = snap.val().shopName;
+                }
+                showLoading(false); // Hide loading once profile loaded
+            });
+
+            db.ref('users/' + uid + '/products').on('value', snap => {
+                products = snap.val() || {};
+                renderStock();
+                calculateStats();
+            });
+
+            db.ref('users/' + uid + '/sales').on('value', snap => {
+                sales = snap.val() || {};
+                renderDaybook();
+                calculateStats();
+            });
+
+            db.ref('users/' + uid + '/khata').on('value', snap => {
+                khata = snap.val() || {};
+                renderKhata();
+            });
+
+            db.ref('users/' + uid + '/bills').on('value', snap => {
+                bills = snap.val() || {};
+            });
+        }
+
+        function calculateStats() {
+            let totalPurchase = 0;
+            let totalSale = 0;
+            let stockValue = 0;
+            let totalReturn = 0;
+
+            for(let key in products) {
+                let p = products[key];
+                stockValue += (p.qty * p.buyPrice);
+                // Purchase = (Current + Sold) * Cost
+                totalPurchase += ((p.qty + (p.sold || 0)) * p.buyPrice);
+                totalReturn += ((p.returned || 0) * p.buyPrice);
+            }
+
+            let todaySale = 0;
+            let todayProfit = 0;
+            let todayStr = new Date().toDateString();
+
+            for(let key in sales) {
+                let s = sales[key];
+                if(!s.isReturned) {
+                    totalSale += (s.salePrice * s.qty);
+                    if(new Date(s.date).toDateString() === todayStr) {
+                        todaySale += (s.salePrice * s.qty);
+                        todayProfit += s.profit;
+                    }
+                }
+            }
+
+            document.getElementById('rpt-purchase').innerText = totalPurchase.toLocaleString();
+            document.getElementById('rpt-sale').innerText = totalSale.toLocaleString();
+            document.getElementById('rpt-stock').innerText = stockValue.toLocaleString();
+            document.getElementById('rpt-return').innerText = totalReturn.toLocaleString();
+            document.getElementById('today-sale').innerText = todaySale.toLocaleString();
+            document.getElementById('today-profit').innerText = todayProfit.toLocaleString();
+        }
+
+        // --- STOCK ---
+        function addProduct() {
+            const code = document.getElementById('prod-code').value;
+            const name = document.getElementById('prod-name').value;
+            const price = Number(document.getElementById('prod-price').value);
+            const qty = Number(document.getElementById('prod-qty').value);
+
+            if(!code || !name) return alert("Fill details");
+            if(products[code]) return alert("Code exists!");
+
+            db.ref('users/' + currentUser.uid + '/products/' + code).set({
+                name: name, buyPrice: price, qty: qty, sold: 0, returned: 0
+            });
+            document.getElementById('prod-code').value = "";
+            document.getElementById('prod-name').value = "";
+            document.getElementById('prod-qty').value = "";
+        }
+
+        function renderStock() {
+            let html = '';
+            for(let key in products) {
+                let p = products[key];
+                let bg = p.qty <= 0 ? '#fee2e2' : 'white';
+                html += `<tr style="background:${bg}">
+                    <td>${key}</td>
+                    <td>${p.name}</td>
+                    <td>${p.buyPrice}</td> 
+                    <td>${p.qty}</td>
+                    <td>${p.sold || 0}</td>
+                    <td>
+                        <button class="btn-sm btn-warning" onclick="editProduct('${key}')">✏️</button>
+                        <button class="btn-sm btn-danger" onclick="deleteProduct('${key}')">🗑️</button>
+                    </td>
+                </tr>`;
+            }
+            document.getElementById('stock-table').innerHTML = html;
+        }
+
+        // --- EDIT & DELETE STOCK ---
+        function deleteProduct(key) {
+            if(confirm("Are you sure you want to delete this product?")) {
+                db.ref('users/' + currentUser.uid + '/products/' + key).remove();
+            }
+        }
+
+        let editTargetKey = null;
+        function editProduct(key) {
+            editTargetKey = key;
+            let p = products[key];
+            document.getElementById('edit-name').value = p.name;
+            document.getElementById('edit-price').value = p.buyPrice;
+            document.getElementById('edit-add-qty').value = ""; // Clear
+            document.getElementById('modal-edit').style.display = 'flex';
+        }
+
+        function saveStockEdit() {
+            const newPrice = Number(document.getElementById('edit-price').value);
+            const addQty = Number(document.getElementById('edit-add-qty').value);
+            
+            if(!newPrice) return alert("Price is required");
+
+            let p = products[editTargetKey];
+            let newQty = p.qty + addQty;
+
+            db.ref('users/' + currentUser.uid + '/products/' + editTargetKey).update({
+                buyPrice: newPrice,
+                qty: newQty
+            });
+            closeModal('modal-edit');
+        }
+
+        // --- DAYBOOK ---
+        function fetchProdName() {
+            const code = document.getElementById('day-code').value;
+            if(products[code]) document.getElementById('day-name').value = products[code].name;
+        }
+
+        function makeSale() {
+            const code = document.getElementById('day-code').value;
+            const price = Number(document.getElementById('day-price').value);
+            const qty = Number(document.getElementById('day-qty').value);
+
+            if(!products[code]) return alert("Not found");
+            if(products[code].qty < qty) return alert("Low stock");
+
+            const profit = (price - products[code].buyPrice) * qty;
+            db.ref('users/' + currentUser.uid + '/sales').push({
+                code: code, name: products[code].name, salePrice: price, qty: qty, profit: profit, date: new Date().toISOString(), isReturned: false
+            });
+            db.ref('users/' + currentUser.uid + '/products/' + code).update({
+                qty: products[code].qty - qty,
+                sold: (products[code].sold || 0) + qty
+            });
+            document.getElementById('day-code').value = "";
+            document.getElementById('day-name').value = "";
+            document.getElementById('day-qty').value = "";
+        }
+
+        function renderDaybook() {
+            let html = '';
+            let sortedKeys = Object.keys(sales).sort((a,b) => new Date(sales[b].date) - new Date(sales[a].date));
+            let todayStr = new Date().toDateString();
+
+            sortedKeys.forEach(key => {
+                let s = sales[key];
+                // FILTER: Only show today's sales
+                if(new Date(s.date).toDateString() === todayStr) {
+                    if(!s.isReturned) {
+                        html += `<tr>
+                            <td>${s.name}</td><td>${s.qty}</td><td>${s.salePrice}</td>
+                            <td style="color:${s.profit>=0?'green':'red'}">${s.profit}</td>
+                            <td><button class="btn-danger" style="padding:5px;" onclick="initiateReturn('${key}')">↩</button></td>
+                        </tr>`;
+                    }
+                }
+            });
+            document.getElementById('daybook-table').innerHTML = html;
+        }
+
+        // --- MONTHLY RECORDS ---
+        function openMonthlyRecords() {
+            const container = document.getElementById('monthly-list');
+            container.innerHTML = "";
+            document.getElementById('monthly-list').innerHTML = '<p style="text-align:center;">Loading dates...</p>';
+            
+            // Generate last 30 days
+            let listHtml = "";
+            for (let i = 0; i < 30; i++) {
+                let d = new Date();
+                d.setDate(d.getDate() - i);
+                let dateStr = d.toDateString();
+                
+                listHtml += `<div class="date-list-item" onclick="showHistoryForDate('${dateStr}')">
+                    <span>📅 ${dateStr}</span> <span>➜</span>
+                </div>`;
+            }
+            container.innerHTML = listHtml;
+            document.getElementById('modal-monthly').style.display = 'flex';
+        }
+
+        function showHistoryForDate(dateStr) {
+            let html = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <button class="btn btn-sm btn-primary" onclick="openMonthlyRecords()">⬅ Back</button>
+                    <h4 style="margin:0;">${dateStr}</h4>
+                </div>
+            `;
+
+            html += `
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>Profit</th>
+                            <th>Return</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+            
+            let totalSale = 0;
+            let totalProfit = 0;
+            let found = false;
+
+            Object.keys(sales).forEach(key => {
+                let s = sales[key];
+                if(new Date(s.date).toDateString() === dateStr && !s.isReturned) {
+                    found = true;
+                    totalSale += (s.salePrice * s.qty);
+                    totalProfit += s.profit;
+                    
+                    html += `<tr>
+                        <td>${s.name}</td>
+                        <td>${s.qty}</td>
+                        <td>${s.salePrice}</td>
+                        <td style="color:${s.profit>=0?'green':'red'}">${s.profit}</td>
+                        <td><button class="btn-danger" style="padding:5px;" onclick="initiateReturn('${key}')">↩</button></td>
+                    </tr>`;
+                }
+            });
+
+            html += `</tbody></table></div>`;
+            
+            if(!found) {
+                html += "<p style='text-align:center; padding:10px;'>No active sales found for this date.</p>";
+            } else {
+                html += `
+                <div style="background:#e0f2fe; padding:10px; border-radius:8px; margin-top:10px; text-align:center;">
+                    <div>Total Sale: <b>${totalSale.toLocaleString()}</b></div>
+                    <div>Total Profit: <b style="color:green;">${totalProfit.toLocaleString()}</b></div>
+                </div>`;
+            }
+
+            document.getElementById('monthly-list').innerHTML = html;
+        }
+
+        // --- RETURN ---
+        let returnTargetId = null;
+        function initiateReturn(saleId) {
+            returnTargetId = saleId;
+            let s = sales[saleId];
+            document.getElementById('return-info').innerText = `Returning: ${s.name}`;
+            document.getElementById('modal-return').style.display = 'flex';
+        }
+
+        function confirmReturn() {
+            const qty = Number(document.getElementById('return-qty').value);
+            let s = sales[returnTargetId];
+            if(!qty || qty > s.qty) return alert("Invalid Qty");
+
+            if(qty === s.qty) db.ref('users/' + currentUser.uid + '/sales/' + returnTargetId).update({ isReturned: true });
+            else {
+                let nQ = s.qty - qty;
+                let nP = (s.salePrice - products[s.code].buyPrice) * nQ;
+                db.ref('users/' + currentUser.uid + '/sales/' + returnTargetId).update({ qty: nQ, profit: nP });
+            }
+
+            let p = products[s.code];
+            db.ref('users/' + currentUser.uid + '/products/' + s.code).update({
+                qty: p.qty + qty, sold: p.sold - qty, returned: (p.returned || 0) + qty
+            });
+            closeModal('modal-return');
+        }
+
+        // --- KHATA ---
+        function addKhata() {
+            const name = document.getElementById('k-name').value;
+            const given = Number(document.getElementById('k-given').value || 0);
+            const taken = Number(document.getElementById('k-taken').value || 0);
+            if(!name) return;
+
+            let foundKey = null;
+            for(let key in khata) if(khata[key].name.toLowerCase() === name.toLowerCase()) foundKey = key;
+
+            if(foundKey) {
+                let k = khata[foundKey];
+                db.ref('users/' + currentUser.uid + '/khata/' + foundKey).update({ given: k.given + given, taken: k.taken + taken });
+            } else {
+                db.ref('users/' + currentUser.uid + '/khata').push({ name: name, given: given, taken: taken });
+            }
+            document.getElementById('k-name').value = "";
+            document.getElementById('k-given').value = "";
+            document.getElementById('k-taken').value = "";
+        }
+
+        function renderKhata() {
+            const search = document.getElementById('khata-search').value.toLowerCase();
+            let html = '', total = 0;
+            for(let key in khata) {
+                let k = khata[key];
+                if(k.name.toLowerCase().includes(search)) {
+                    let bal = k.given - k.taken;
+                    total += bal;
+                    html += `<tr><td>${k.name}</td><td>${k.given}</td><td>${k.taken}</td><td style="color:${bal>0?'red':'green'}">${bal}</td></tr>`;
+                }
+            }
+            document.getElementById('khata-table').innerHTML = html;
+            document.getElementById('total-udhaar').innerText = total;
+        }
+
+        // --- BILL ---
+        let billItems = [];
+        function addToBill() {
+            const item = document.getElementById('b-item').value;
+            const qty = Number(document.getElementById('b-qty').value);
+            const price = Number(document.getElementById('b-price').value);
+            if(!item) return;
+            billItems.push({item, qty, price, total: qty*price});
+            renderBill();
+            document.getElementById('b-item').value = "";
+            document.getElementById('b-qty').value = "";
+        }
+
+        function renderBill() {
+            let html = '', gt = 0;
+            billItems.forEach(b => {
+                gt += b.total;
+                html += `<div class="bill-row"><span style="flex:2">${b.item}</span><span style="flex:1;text-align:center">${b.qty}</span><span style="flex:1;text-align:center">${b.price}</span><span style="flex:1;text-align:right">${b.total}</span></div>`;
+            });
+            document.getElementById('bill-rows').innerHTML = html;
+            document.getElementById('print-total').innerText = gt;
+            document.getElementById('print-date').innerText = new Date().toLocaleDateString();
+            document.getElementById('print-cust').innerText = document.getElementById('b-cust').value || "Guest";
+        }
+
+        function saveBill() {
+            if(!billItems.length) return alert("Empty");
+            showLoading(true);
+            db.ref('users/' + currentUser.uid + '/bills').push({
+                customer: document.getElementById('b-cust').value || "Guest",
+                date: new Date().toISOString(),
+                total: document.getElementById('print-total').innerText,
+                items: billItems
+            });
+            html2canvas(document.getElementById('bill-paper')).then(c => {
+                showLoading(false);
+                document.getElementById('generated-bill').src = c.toDataURL();
+                document.getElementById('modal-bill-view').style.display = 'flex';
+                billItems = []; renderBill();
+            });
+        }
+
+        function clearBill() { if(confirm("Clear?")) { billItems=[]; renderBill(); } }
+
+        function openBillHistory() {
+            let html = '';
+            let keys = Object.keys(bills).reverse().slice(0,30);
+            keys.forEach(k => {
+                let b = bills[k];
+                html += `<div style="border-bottom:1px solid #ccc; padding:10px;"><b>${b.customer}</b> - ${b.total}<br><small>${new Date(b.date).toLocaleDateString()}</small></div>`;
+            });
+            document.getElementById('history-list').innerHTML = html;
+            document.getElementById('modal-history').style.display = 'flex';
+        }
+
+        // --- BUSINESS DETAILS LOGIC ---
+        function showBusinessDetails() {
+            calcStats('all');
+            document.getElementById('detail-filters').style.display = 'none';
+            document.getElementById('modal-details').style.display = 'flex';
+            document.getElementById('menu').style.display = 'none';
+        }
+
+        function toggleDetailFilters() {
+            const f = document.getElementById('detail-filters');
+            f.style.display = f.style.display === 'none' ? 'grid' : 'none';
+        }
+
+        function calcStats(days) {
+            let totalSale = 0;
+            let totalProfit = 0;
+            let label = "All Time";
+            let cutoffDate = new Date();
+            // Reset hours to ensure full day coverage
+            cutoffDate.setHours(0,0,0,0);
+
+            if (days !== 'all') {
+                cutoffDate.setDate(cutoffDate.getDate() - days);
+                label = days === 365 ? "Last 1 Year" : days === 180 ? "Last 6 Months" : `Last ${days} Days`;
+            }
+
+            for(let key in sales) {
+                let s = sales[key];
+                if(s.isReturned) continue;
+                let saleDate = new Date(s.date);
+                if(days === 'all' || saleDate >= cutoffDate) {
+                    totalSale += (s.salePrice * s.qty);
+                    totalProfit += s.profit;
+                }
+            }
+            document.getElementById('d-sale').innerText = totalSale.toLocaleString();
+            document.getElementById('d-profit').innerText = totalProfit.toLocaleString();
+            document.getElementById('period-label').innerText = "Period: " + label;
+            if(days !== 'all') document.getElementById('detail-filters').style.display = 'none';
+        }
+
+        // --- UTILS ---
+        function nav(sectionId, btn) {
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active-section'));
+            document.getElementById(sectionId).classList.add('active-section');
+            document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+            document.getElementById('menu').style.display = 'none';
+        }
+        function toggleMenu() { let m = document.getElementById('menu'); m.style.display = m.style.display === 'block' ? 'none' : 'block'; }
+        function showLoading(show) { document.getElementById('loading').style.display = show ? 'flex' : 'none'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function openContact() { window.open('https://wa.me/923001234567', '_blank'); }
+        function openYoutube() { window.open('https://youtube.com', '_blank'); }
+        function openDonate() { document.getElementById('modal-donate').style.display = 'flex'; }
+        function openSettings() { alert("Logged in: " + currentUser.email); }
+
+    </script>
+</body>
+</html>
