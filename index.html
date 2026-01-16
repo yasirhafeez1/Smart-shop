@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMART SHOP</title>
+    <title>Smart Dookan Pro (Final v5)</title>
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -19,27 +19,23 @@
         * { box-sizing: border-box; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; background: var(--bg); color: var(--text); padding-bottom: 80px; user-select: none; }
 
-        /* --- NEW INITIAL LOADER (SPLASH SCREEN) --- */
+        /* --- INITIAL LOADER --- */
         #initial-loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: white; z-index: 9999;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
         }
         .spinner {
-            border: 5px solid #f3f3f3; /* Light grey */
-            border-top: 5px solid var(--primary); /* Blue */
-            border-radius: 50%;
-            width: 50px; height: 50px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
+            border: 5px solid #f3f3f3; border-top: 5px solid var(--primary);
+            border-radius: 50%; width: 50px; height: 50px;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Auth Screen (Hidden by default to prevent flicker) */
+        /* Auth Screen */
         #auth-screen { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: white; z-index: 1000; 
-            display: none; /* CHANGED: Hidden initially */
+            background: white; z-index: 1000; display: none;
             flex-direction: column; justify-content: center; padding: 20px; 
         }
 
@@ -78,7 +74,7 @@
         .action-icon { font-size: 24px; display: block; margin-bottom: 5px; }
         .action-text { font-size: 12px; font-weight: bold; }
 
-        /* Tables (Scrollable) */
+        /* Tables */
         .table-wrap { overflow-x: auto; background: white; border-radius: 12px; margin-top: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         table { width: 100%; border-collapse: collapse; min-width: 650px; font-size: 14px; }
         th { background: #f9fafb; padding: 12px; text-align: left; border-bottom: 2px solid #e5e7eb; white-space: nowrap; }
@@ -99,7 +95,6 @@
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; }
         .modal-content { background: white; width: 90%; max-width: 350px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto; text-align: center; position: relative; }
         
-        /* Internal Activity Loader */
         .loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; z-index:3000; font-weight:bold; color:var(--primary); }
 
         /* Date Button List */
@@ -111,11 +106,56 @@
         .filter-grid { display: none; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; background: #f9fafb; padding: 10px; border-radius: 8px; }
         .filter-btn { border: 1px solid #ccc; background: white; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 12px; }
         .filter-btn:hover { background: #e5e7eb; }
+
+        /* --- ABOUT US STYLES (Provided by User, Scoped) --- */
+        #modal-about {
+            background-color: #0d1b3d !important; /* Force Dark Blue Background */
+            display: none;
+            overflow-y: auto; /* Allow scrolling for long content */
+            z-index: 5000;
+        }
+        
+        .about-wrapper {
+            font-family: Arial, sans-serif;
+            color: #ffffff;
+            text-align: center;
+            padding: 30px 15px;
+            max-width: 900px;
+            margin: auto;
+        }
+
+        .about-profile img {
+            width: 140px; height: 140px;
+            border-radius: 50%; object-fit: cover;
+            border: 4px solid #ffffff;
+        }
+
+        .about-wrapper h1 { margin-top: 15px; font-size: 26px; color: white; }
+        .about-wrapper p { font-size: 15px; line-height: 1.6; opacity: 0.9; color: white; }
+        .about-follow-text { margin: 30px 0 20px; font-size: 20px; font-weight: bold; color: white; }
+
+        .about-socials { display: flex; justify-content: center; gap: 35px; flex-wrap: wrap; }
+        .social-box img { width: 65px; height: 65px; cursor: pointer; transition: transform 0.3s; }
+        .social-box img:hover { transform: scale(1.15); }
+
+        .about-more { margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2); }
+        .about-more h2 { font-size: 24px; margin-bottom: 10px; color: white; }
+        .about-footer-text { font-size: 14px; opacity: 0.85; }
+
+        /* Close Button for About Us */
+        .about-close-btn {
+            position: fixed; top: 20px; right: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white; border: none; font-size: 24px;
+            width: 40px; height: 40px; border-radius: 50%;
+            cursor: pointer; z-index: 5001;
+            display: flex; align-items: center; justify-content: center;
+        }
     </style>
 </head>
 <body>
 
-    <!-- INITIAL SPLASH SCREEN (New) -->
+    <!-- INITIAL SPLASH SCREEN -->
     <div id="initial-loader">
         <div class="spinner"></div>
         <h3 style="color:var(--text);">Please Wait...</h3>
@@ -128,7 +168,7 @@
         </div>
     </div>
 
-    <!-- Auth Section (Default Hidden) -->
+    <!-- Auth Section -->
     <div id="auth-screen">
         <div class="logo">🏪</div>
         <h2 style="text-align: center;" id="auth-title">Login to Dookan</h2>
@@ -171,6 +211,7 @@
             <span class="menu-btn" onclick="toggleMenu()">⋮</span>
             <div id="menu" class="dropdown">
                 <div onclick="showBusinessDetails()">📊 Business Details</div>
+                <div onclick="showAboutUs()">ℹ️ About Us</div> <!-- New Option -->
                 <div onclick="openSettings()">⚙️ Settings</div>
                 <div onclick="handleLogout()" style="color:red;">🚪 Logout</div>
             </div>
@@ -330,8 +371,65 @@
     </div>
 
     <!-- MODALS -->
-    
-    <!-- Edit Stock Modal (NEW) -->
+<!-- ABOUT US MODAL (Updated Description) -->
+    <div id="modal-about" class="modal">
+        <!-- Close Button -->
+        <button class="about-close-btn" onclick="closeModal('modal-about')">✕</button>
+        
+        <!-- User's Content -->
+        <div class="about-wrapper">
+            <div class="about-profile">
+                <!-- Using placeholder if image missing, else use your file -->
+                <img src="profit.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png'" alt="Smart Shop">
+            </div>
+
+            <h1>Smart Shop</h1>
+            
+            <!-- NEW ENGLISH DESCRIPTION HERE -->
+            <p style="max-width: 600px; margin: 15px auto;">
+                Smart Shop is your ultimate digital partner for business management. 
+                We simplify your daily operations by offering real-time stock tracking, 
+                digital Khata (ledger), instant bill generation, and detailed profit analytics. 
+                Our goal is to empower retailers with modern tools to manage their shops efficiently and boost growth.
+            </p>
+
+            <div class="about-follow-text">FOLLOW US ON</div>
+
+            <div class="about-socials">
+                <div class="social-box">
+                    <a href="https://www.youtube.com/@yasirdigitalworld" target="_blank">
+                        <img src="youtube.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1384/1384060.png'" alt="YouTube">
+                    </a>
+                </div>
+                <div class="social-box">
+                    <a href="https://www.facebook.com/profile.php?id=61583994808446" target="_blank">
+                        <img src="facebook.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/124/124010.png'" alt="Facebook">
+                    </a>
+                </div>
+                <div class="social-box">
+                    <a href="https://www.instagram.com/yasirhafeezofficial?igsh=MWtjd3QyYnp5MG84eA==" target="_blank">
+                        <img src="instagram.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2111/2111463.png'" alt="Instagram">
+                    </a>
+                </div>
+                <div class="social-box">
+                    <a href="https://www.tiktok.com/@yasir.hafeez.official" target="_blank">
+                        <img src="tiktok.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3046/3046121.png'" alt="TikTok">
+                    </a>
+                </div>
+            </div>
+
+            <div class="about-more">
+                <h2>For More</h2>
+                <p class="about-footer-text">
+                    For latest updates, special offers, and exclusive content,  
+                    follow us on our social media platforms.  
+                    <br><br>
+                    <strong>Smart Shop – Smart Choice.</strong>
+                </p>
+            </div>
+        </div>
+    </div>  
+    <!-- Edit Stock Modal -->
     <div id="modal-edit" class="modal">
         <div class="modal-content">
             <h3>Edit Stock</h3>
@@ -347,7 +445,7 @@
         </div>
     </div>
 
-    <!-- Business Details Modal (UPDATED) -->
+    <!-- Business Details Modal -->
     <div id="modal-details" class="modal">
         <div class="modal-content" style="max-width: 350px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
@@ -423,7 +521,7 @@
     <!-- Donate Modal -->
     <div id="modal-donate" class="modal">
         <div class="modal-content" style="text-align:center;">
-            <h3>We Need Your Help ❤️ smart shop is a free mobile App.If you have an option that help smart shop  to be alive for a long time  donating us is adirect method  You can do it by the payment methods below. Thank you for yourunderstanding and support!</h3>
+            <h3>We Need Your Help ❤️ smart shop is a free mobile App.If you have an option that help smart shop  to be alive for a long time  donating us is adirect method  You can doit by the payment methodsbelow. Thank you for yourunderstanding and support!</h3>
             <p>Easypaisa/Jazzcash: 03495895610</p>
             <p>IBAN: PK36MEZN00012345</p>
             <button class="btn btn-primary" onclick="closeModal('modal-donate')">Close</button>
@@ -452,27 +550,23 @@
         let khata = {};
         let bills = {};
 
-        // --- AUTHENTICATION STATE CHANGE (KEY LOGIC UPDATE) ---
+        // --- AUTHENTICATION STATE CHANGE ---
         auth.onAuthStateChanged(user => {
             const loader = document.getElementById('initial-loader');
             
             if (user) {
-                // User is Logged In: Show App
                 currentUser = user;
                 document.getElementById('auth-screen').style.display = 'none';
                 document.getElementById('main-app').style.display = 'block';
                 loadData();
             } else {
-                // User is Not Logged In: Show Auth Screen
                 currentUser = null;
-                document.getElementById('auth-screen').style.display = 'flex'; // Use flex to center content
+                document.getElementById('auth-screen').style.display = 'flex';
                 document.getElementById('main-app').style.display = 'none';
-                showLoading(false); // Hide internal processing loader if visible
+                showLoading(false);
             }
 
-            // HIDE THE SPLASH SCREEN AFTER DECISION IS MADE
             if (loader) {
-                // Small buffer to ensure rendering is smooth
                 setTimeout(() => {
                     loader.style.display = 'none';
                 }, 500);
@@ -926,6 +1020,12 @@
             calcStats('all');
             document.getElementById('detail-filters').style.display = 'none';
             document.getElementById('modal-details').style.display = 'flex';
+            document.getElementById('menu').style.display = 'none';
+        }
+
+        // --- ABOUT US LOGIC ---
+        function showAboutUs() {
+            document.getElementById('modal-about').style.display = 'block';
             document.getElementById('menu').style.display = 'none';
         }
 
